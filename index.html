@@ -1,0 +1,821 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GemischtesHack Dashboard</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f6f6f4; --surface: #fcfcfb; --surface-2: #f0efec; --border: #e2e1dc;
+  --text: #0b0b0b; --text-2: #52514e; --muted: #8a8984;
+  --us: #2a78d6; --pick-1: #eb6834; --pick-2: #1baf7a; --pick-3: #6250d6;
+  --other: #c9c8c2; --grid: #ecebe7; --zero: #a9a8a2;
+  --good: #0a7d32; --bad: #c2352f; --chip: #e9e8e3;
+  --cost-fair: #8fb3dd; --cost-inflated: #eda100; --cost-penalty: #c2352f;
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #121211; --surface: #1a1a19; --surface-2: #232322; --border: #2f2f2d;
+    --text: #f0efec; --text-2: #c3c2b7; --muted: #8c8b84;
+    --us: #3987e5; --pick-1: #d95926; --pick-2: #199e70; --pick-3: #9085e9;
+    --other: #4a4a47; --grid: #262625; --zero: #5c5b57;
+    --good: #3fb76a; --bad: #e66767; --chip: #2a2a28;
+    --cost-fair: #4a72a3; --cost-inflated: #c98500; --cost-penalty: #e66767;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121211; --surface: #1a1a19; --surface-2: #232322; --border: #2f2f2d;
+  --text: #f0efec; --text-2: #c3c2b7; --muted: #8c8b84;
+  --us: #3987e5; --pick-1: #d95926; --pick-2: #199e70; --pick-3: #9085e9;
+  --other: #4a4a47; --grid: #262625; --zero: #5c5b57;
+  --good: #3fb76a; --bad: #e66767; --chip: #2a2a28;
+  --cost-fair: #4a72a3; --cost-inflated: #c98500; --cost-penalty: #e66767;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 var(--font); }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding-block: 14px;
+  padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px));
+  border-bottom: 1px solid var(--border); background: var(--surface); position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+header h1 { font-size: 16px; margin: 0; font-weight: 650; letter-spacing: .01em; }
+nav { display: flex; gap: 4px; }
+nav button { font: inherit; border: 0; background: none; color: var(--text-2); padding: 6px 12px;
+  border-radius: 6px; cursor: pointer; }
+nav button[aria-selected="true"] { background: var(--surface-2); color: var(--text); font-weight: 600; }
+.status { margin-left: auto; color: var(--muted); font-size: 12px; display: flex; gap: 10px; align-items: center; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); display: inline-block; }
+.dot.stale { background: var(--bad); }
+.icon-btn { font: inherit; font-size: 12px; border: 1px solid var(--border); background: var(--surface);
+  color: var(--text-2); border-radius: 6px; padding: 3px 8px; cursor: pointer; }
+main { max-width: 1280px; margin: 0 auto; padding-block: 20px 48px;
+  padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px)); }
+.brief-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px 16px; }
+.brief-head select { font: inherit; font-size: 12.5px; padding: 3px 6px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); }
+#brief-headline { font-size: 15px; font-weight: 650; margin: 4px 0 12px; font-variant-numeric: tabular-nums; }
+.brief-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px 24px; }
+.brief-grid h4 { margin: 0 0 4px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+.brief-grid ul { margin: 0; padding-left: 16px; }
+.brief-grid li { font-size: 13px; margin-bottom: 3px; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.brief-grid li.warn-li { color: var(--bad); font-weight: 600; }
+.brief-grid > div { min-width: 0; }
+section.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 18px 20px; margin-bottom: 20px; }
+.card h2 { font-size: 15px; margin: 0 0 2px; font-weight: 650; }
+.card .sub { color: var(--text-2); font-size: 12.5px; margin: 0 0 14px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; }
+.tile .k { color: var(--text-2); font-size: 12px; }
+.tile .v { font-size: 24px; font-weight: 650; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.tile .n { color: var(--muted); font-size: 12px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+.seg button { font: inherit; font-size: 12.5px; border: 0; background: var(--surface); color: var(--text-2);
+  padding: 4px 10px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface-2); color: var(--text); font-weight: 600; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 4px; }
+.legend button { font: inherit; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text-2); border-radius: 999px;
+  padding: 2px 10px 2px 8px; cursor: pointer; }
+.legend button[aria-pressed="true"] { color: var(--text); border-color: var(--text-2); }
+.swatch { width: 14px; height: 3px; border-radius: 2px; background: var(--other); }
+.legend .muted-i { color: var(--muted); font-style: normal; font-size: 11px; }
+.chart-wrap { position: relative; }
+svg.chart { width: 100%; height: 380px; display: block; overflow: visible; }
+svg.chart text { font: 11px var(--font); fill: var(--muted); font-variant-numeric: tabular-nums; }
+svg.chart .lbl { fill: var(--text-2); font-size: 11.5px; }
+.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.12);
+  min-width: 190px; display: none; z-index: 3; }
+.tip h4 { margin: 0 0 4px; font-size: 12px; }
+.tip .r { display: flex; justify-content: space-between; gap: 12px; font-variant-numeric: tabular-nums; }
+.tip .r.us { font-weight: 650; }
+.tip .r .nm { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); }
+.tip .r.us .nm { color: var(--text); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--text-2); font-weight: 600; font-size: 12px; white-space: nowrap; }
+th.grp { border-bottom: 0; padding-bottom: 0; color: var(--text); font-size: 12.5px; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.us td { background: color-mix(in srgb, var(--us) 9%, transparent); }
+.costbar { display: flex; gap: 2px; width: 120px; height: 8px; margin-top: 5px; }
+.costbar span { border-radius: 2px; min-width: 2px; }
+.costbar .seg-fair { background: var(--cost-fair); }
+.costbar .seg-inflated { background: var(--cost-inflated); }
+.costbar .seg-penalty { background: var(--cost-penalty); }
+.costbar .seg-unclassified { background: var(--other); }
+.cost-key { display: inline-flex; gap: 12px; flex-wrap: wrap; }
+.cost-key i { display: inline-block; width: 10px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: 0; }
+.badge { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px;
+  background: var(--chip); color: var(--text); white-space: nowrap; }
+.why { color: var(--text-2); font-size: 12px; margin-top: 3px; }
+.shift { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+.shift b { color: var(--text-2); font-weight: 600; }
+.table-scroll { overflow-x: auto; }
+details.defs { margin-top: 12px; color: var(--text-2); font-size: 12.5px; }
+details.defs summary { cursor: pointer; }
+details.defs dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 8px 0 0; }
+details.defs dt { color: var(--text); font-weight: 600; }
+details.defs dd { margin: 0; }
+.todo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.col { background: var(--surface-2); border-radius: 9px; padding: 12px 12px 8px; min-width: 0; }
+.col h3 { font-size: 13.5px; margin: 0 0 8px; display: flex; justify-content: space-between; gap: 8px; }
+.col h3 .cnt { color: var(--muted); font-weight: 500; font-size: 12px; }
+.task { display: flex; gap: 8px; align-items: flex-start; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 7px; padding: 7px 9px; margin-bottom: 6px; font-size: 13px; }
+.task input { margin: 3px 0 0; accent-color: var(--us); }
+.task.done .t { color: var(--muted); text-decoration: line-through; }
+.task .t { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.task code { font: 12px var(--mono); background: var(--surface-2); padding: 0 3px; border-radius: 3px; }
+.tag { font-size: 11px; color: var(--text-2); background: var(--chip); border-radius: 4px; padding: 0 5px; margin-left: 4px; }
+.src { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
+  border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; margin-right: 4px; }
+.work { margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 8px; }
+.work h4 { font-size: 11.5px; color: var(--muted); margin: 0 0 4px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.work li { font-size: 12px; color: var(--text-2); margin-bottom: 3px; overflow-wrap: anywhere; }
+.work ul { list-style: none; padding: 0; margin: 0; }
+.work time { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 6px; }
+.addform { display: flex; gap: 6px; margin-top: 6px; }
+.addform input { flex: 1; min-width: 0; font: inherit; font-size: 12.5px; padding: 4px 8px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+.note { color: var(--muted); font-size: 12px; margin-top: 10px; }
+.empty { color: var(--muted); font-size: 12.5px; padding: 4px 2px 8px; }
+.warn { color: var(--bad); font-size: 12.5px; }
+/* program tab */
+.diagram { overflow-x: auto; padding: 8px 0; text-align: center; }
+.diagram svg { max-width: 100%; height: auto; }
+.lead { color: var(--text-2); max-width: 820px; margin: 0 0 18px; }
+.prog-nav { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.prog-nav a { font-size: 12.5px; color: var(--text-2); text-decoration: none; border: 1px solid var(--border);
+  padding: 3px 10px; border-radius: 999px; background: var(--surface); }
+.caption { color: var(--text-2); font-size: 12.5px; margin-top: 10px; max-width: 900px; }
+[hidden] { display: none !important; }
+@media (max-width: 640px) {
+  header { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  main { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .status { margin-left: 0; width: 100%; }
+  svg.chart { height: 300px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>GemischtesHack · Claim to Fame</h1>
+  <nav role="tablist">
+    <button role="tab" id="tab-dash" aria-selected="true" data-tab="dash">Dashboard</button>
+    <button role="tab" id="tab-prog" aria-selected="false" data-tab="prog">Program</button>
+  </nav>
+  <div class="status">
+    <span><span class="dot" id="live-dot"></span> <span id="updated">loading…</span></span>
+    <button class="icon-btn" id="theme-btn" title="Toggle light/dark">◐ Theme</button>
+  </div>
+</header>
+
+<main id="view-dash">
+  <div id="load-error" class="warn" hidden></div>
+  <div class="tiles" id="tiles"></div>
+
+  <section class="card" id="brief-card" hidden>
+    <div class="brief-head">
+      <h2>Round briefing</h2>
+      <label class="note" style="margin:0">Game <select id="brief-sel" aria-label="Briefing for game"></select></label>
+    </div>
+    <p id="brief-headline"></p>
+    <div class="brief-grid" id="brief-body"></div>
+  </section>
+
+  <section class="card" id="scores-card">
+    <h2>Score per team</h2>
+    <p class="sub" id="scores-sub">Net payoff = received as handyman − paid as insurer.</p>
+    <div class="row">
+      <div class="seg" role="group" aria-label="Measure">
+        <button aria-pressed="true" data-mode="cum">Cumulative</button>
+        <button aria-pressed="false" data-mode="game">Per game</button>
+      </div>
+      <div class="seg" role="group" aria-label="View">
+        <button aria-pressed="true" data-view="chart">Chart</button>
+        <button aria-pressed="false" data-view="table">Table</button>
+      </div>
+      <span class="note" style="margin:0">Click up to 3 teams to highlight them.</span>
+      <label class="note" id="scale-dropped-wrap" style="margin:0" hidden><input type="checkbox" id="scale-dropped"> Scale to dropped-out teams</label>
+    </div>
+    <div class="legend" id="legend"></div>
+    <div class="chart-wrap" id="chart-wrap">
+      <svg class="chart" id="chart" role="img" aria-label="Line chart of net score per team by game"></svg>
+      <div class="tip" id="tip"></div>
+    </div>
+    <div class="table-scroll" id="score-table" hidden></div>
+  </section>
+
+  <section class="card">
+    <h2>How the others play</h2>
+    <p class="sub" id="strat-sub">Read off every team's charges and accept/reject decisions in the public transactions.</p>
+    <p class="note cost-key" style="margin:0 0 8px"><span><i style="background:var(--cost-fair)"></i>Fair bills accepted</span><span><i style="background:var(--cost-inflated)"></i>Inflated bills paid</span><span><i style="background:var(--cost-penalty)"></i>Fair bills rejected (1.5a penalty)</span><span><i style="background:var(--other)"></i>Unclassified</span></p>
+    <div class="table-scroll"><table id="strat"></table></div>
+    <details class="defs">
+      <summary>How the labels are made</summary>
+      <dl>
+        <dt>a / t</dt><dd>Median charge divided by the revealed fair threshold t (middle of its interval), on lines that are covered (t &gt; 0).</dd>
+        <dt>Above t</dt><dd>Share of their charges on covered lines that were proven above t (paid nothing if rejected, capped if accepted).</dd>
+        <dt>Overcharger</dt><dd>a/t ≥ 1 and at least half of the charges above t.</dd>
+        <dt>Threshold hunter</dt><dd>Prices close to t: a/t ≥ 0.75 and more than 30% above t.</dd>
+        <dt>Fair pricer</dt><dd>a/t ≥ 0.75 and at most 30% above t.</dd>
+        <dt>Undercutter</dt><dd>a/t &lt; 0.75: almost always fair, gives away margin.</dd>
+        <dt>Paid as insurer</dt><dd>Everything the team paid out as insurer in the analysed games.</dd>
+        <dt>Strict / Lenient</dt><dd>Accept rate at least 5 points below / above the field median. Otherwise <i>Selective</i>.</dd>
+        <dt>Fair accepted</dt><dd>Share of that total paid for fair bills they accepted (a ≤ t): money that is owed anyway.</dd>
+        <dt>Inflated paid</dt><dd>Share paid for bills they accepted although the charge was above t (the cost of being too lenient).</dd>
+        <dt>Fair rejected</dt><dd>Share paid as penalties for fair bills they rejected (1.5a each: the cost of being too strict).</dd>
+        <dt>Unclassified</dt><dd>Accepted bills on lines whose t is not pinned down yet; shown grey in the bar.</dd>
+        <dt>Window</dt><dd>All figures and labels use only the last 10 completed games, so they describe how teams play now, not earlier in the tournament.</dd>
+        <dt>Last N games</dt><dd>The same labels on the most recent games only. Shown when the strategy changed.</dd>
+      </dl>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2>Team ToDo</h2>
+    <p class="sub">The hand-written list in <code>TODO.md</code>, open steps derived from the pipeline (marked <span class="src">auto</span>), and each person's latest commits.</p>
+    <div class="todo-grid" id="todo"></div>
+    <p class="note" id="todo-note"></p>
+  </section>
+</main>
+
+<main id="view-prog" hidden>
+  <p class="lead">How the agent turns an encrypted case into prices within 60 seconds, and how every finished game feeds back into the next one.</p>
+  <div class="prog-nav">
+    <a href="#d-overview">1 · Overview</a>
+    <a href="#d-game">2 · One game, second by second</a>
+    <a href="#d-pricing">3 · From estimate to (a, b)</a>
+    <a href="#d-learning">4 · Learning between games</a>
+    <a href="#d-modules">5 · Code map</a>
+  </div>
+
+  <section class="card" id="d-overview">
+    <h2>1 · Overview</h2>
+    <p class="sub">Two loops: the game loop prices each case live, the learning loop turns public results into better beliefs.</p>
+    <div class="diagram"></div><script type="text/plain" class="mmd">
+flowchart TB
+  subgraph LIVE["① Live game · 60-second window"]
+    direction LR
+    K["Fetch key<br/>at start time"] --> D["Decrypt case<br/>policy · claim · invoice · photo"]
+    D --> E["LLM assessment<br/>coverage + fair price per line"]
+    E --> B["Belief about t<br/>P(t = 0) + lognormal"]
+    B --> P["Pricing<br/>b = ⅓ quantile · a = best response"]
+    P --> S["Submit quotes<br/>staged, last write wins"]
+  end
+
+  subgraph LEARN["② After every game"]
+    direction LR
+    T["Public transactions<br/>leaderboard API"] --> M["Market data<br/>t bounds · every team's a and b"]
+    M --> PB["Price book<br/>revealed t of past cases"]
+    M --> OB["Opponent belief<br/>fitted per team"]
+    M --> OBS["Observer review<br/>+ replay tests"]
+  end
+
+  S == "game completes" ==> T
+  PB -- "shown in the next prompt" --> E
+  OB -- "opponent population" --> P
+  OBS -. "approved changes" .-> CFG[("configs/default.toml")]
+  CFG -.-> P
+
+  classDef live fill:#dbe9fb,stroke:#2a78d6,color:#0b0b0b
+  classDef learn fill:#d6f1e6,stroke:#1baf7a,color:#0b0b0b
+  classDef store fill:#f0efec,stroke:#8a8984,color:#0b0b0b
+  class K,D,E,B,P,S live
+  class T,M,PB,OB,OBS learn
+  class CFG store
+    </script>
+  </section>
+
+  <section class="card" id="d-game">
+    <h2>2 · One game, second by second</h2>
+    <p class="sub">Staged submissions: something valid is on the server after a few seconds and is overwritten as better prices arrive.</p>
+    <div class="diagram"></div><script type="text/plain" class="mmd">
+sequenceDiagram
+  autonumber
+  participant R as Scheduler<br/>(python -m c2f run)
+  participant Q as QuantCo API
+  participant F as gpt-4.1<br/>fast stage
+  participant G as gpt-6.2-sol<br/>full stage
+  participant C as Claude Opus<br/>backup stage
+
+  R->>Q: poll key from start_time (1 req/s)
+  Q-->>R: case key
+  R->>R: decrypt case zip
+  R->>Q: stage 0 · fixed fallback (a = 350, b = 0) on every line
+  par in parallel, deadline 54 s
+    R->>F: case + price book, no photo
+    R->>G: case + price book + photo
+    R->>C: same prompt (other provider)
+  end
+  F-->>R: estimates (≈ 5 s)
+  R->>Q: stage 1 · priced quotes
+  G-->>R: estimates (5–25 s)
+  R->>Q: stage 2 · final quotes (overwrite)
+  Note over R,C: Backup is only submitted if the full stage fails or times out
+  R->>R: log to runs/submissions.jsonl
+  R--)C: shadow models assess the case afterwards (never submitted)
+    </script>
+  </section>
+
+  <section class="card" id="d-pricing">
+    <h2>3 · From estimate to (a, b)</h2>
+    <p class="sub">Per invoice line. The insurer limit is opponent-independent; the charge is a best response to how the others accept.</p>
+    <div class="diagram"></div><script type="text/plain" class="mmd">
+flowchart TB
+  X["LLM output per line<br/>p(covered) · price m · uncertainty"] --> BEL["Belief about t<br/>t = 0 with prob. p₀<br/>else lognormal(m, σ ≥ 0.2)"]
+
+  BEL --> BQ{"p₀ high?<br/>(likely not covered)"}
+  BQ -- yes --> B0["b = 0<br/>reject every bill"]
+  BQ -- no --> B1["b = ⅓ quantile of t<br/>accept iff P(t ≥ a) ≥ ⅔"]
+
+  BEL --> A1["Candidate charges a<br/>5 %–95 % quantiles of t"]
+  OPP[("Opponent belief<br/>each team's limit rule b_k")] --> A2
+  A1 --> A2["Expected revenue per candidate<br/>vs simulated opponent limits"]
+  A2 --> A3["a = argmax revenue"]
+  A3 --> A4["Floor: a ≥ 0.87 · m<br/>always > 0"]
+
+  B0 --> OUT(["Quote (a, b)"])
+  B1 --> OUT
+  A4 --> OUT
+
+  classDef ins fill:#d6f1e6,stroke:#1baf7a,color:#0b0b0b
+  classDef cra fill:#dbe9fb,stroke:#2a78d6,color:#0b0b0b
+  classDef store fill:#f0efec,stroke:#8a8984,color:#0b0b0b
+  class BQ,B0,B1 ins
+  class A1,A2,A3,A4 cra
+  class OPP store
+    </script>
+    <p class="caption">Green: insurer role (acceptance limit b). Blue: handyman role (charge a). The ⅓ quantile follows from the payoff table: accepting a fair bill costs a, wrongly rejecting it costs 1.5a, so accepting pays off once P(t ≥ a) ≥ ⅔.</p>
+  </section>
+
+  <section class="card" id="d-learning">
+    <h2>4 · Learning between games</h2>
+    <p class="sub">Data updates are automatic. Strategy changes go through a replay test first (docs/REPORT.md §6).</p>
+    <div class="diagram"></div><script type="text/plain" class="mmd">
+flowchart TB
+  subgraph AUTO["Automatic · scheduler idle time between games"]
+    direction LR
+    L1["Sync transactions<br/>data/transactions/"] --> L2["a, b of every team<br/>+ consistency checks"]
+    L2 --> L3["Market summary<br/>t bounds per line"]
+    L3 --> L4["Price book<br/>for the next prompt"]
+    L2 --> L5["Refit opponent belief<br/>older games decay × 0.85"]
+  end
+
+  subgraph HUMAN["Supervised · observer between games"]
+    direction LR
+    H1["Review game<br/>outcome · coverage · price level"] --> H2["Hypothesis<br/>stated as a mechanism"]
+    H2 --> H3["Replay on all finished games<br/>earlier price book only"]
+    H3 --> H4{"Beats live version<br/>under both t readings,<br/>no cliff nearby?"}
+    H4 -- yes --> H5["Tests + dry run on game 0<br/>deploy between games"]
+    H4 -- no --> H6["Keep live version<br/>record the result"]
+  end
+
+  L3 ==> H1
+  H5 --> CH[("CHANGELOG · config")]
+
+  classDef auto fill:#d6f1e6,stroke:#1baf7a,color:#0b0b0b
+  classDef human fill:#e6e2fa,stroke:#6250d6,color:#0b0b0b
+  classDef store fill:#f0efec,stroke:#8a8984,color:#0b0b0b
+  class L1,L2,L3,L4,L5 auto
+  class H1,H2,H3,H4,H5,H6 human
+  class CH store
+    </script>
+  </section>
+
+  <section class="card" id="d-modules">
+    <h2>5 · Code map</h2>
+    <p class="sub">The <code>c2f</code> package grouped by job. Arrows show what flows between the groups.</p>
+    <div class="diagram"></div><script type="text/plain" class="mmd">
+flowchart TB
+  CLI["<b>CLI</b> · __main__.py<br/>live · run · eval · market · shadow"]
+
+  PLAY["<b>Play a game</b><br/>agent.py — case → quotes, staged submits<br/>api.py — QuantCo client<br/>case_io.py — decrypt and read the case<br/>extract.py — OpenAI assessment<br/>anthropic_extract.py — Claude backup<br/>local_prices.py — no-model fallback"]
+
+  PRICE["<b>Price a line</b><br/>belief.py — belief about t<br/>pricing.py — b quantile, a best response<br/>payoff.py — exact game payoffs<br/>_numerics.py — erfc, optimiser"]
+
+  LEARN["<b>Learn from the market</b><br/>leaderboard.py — public transactions<br/>market.py — post-game pipeline<br/>ab_table.py · consistency.py — every team's a, b<br/>pricebook.py — revealed t<br/>opponents.py — opponent model<br/>novelty.py — seen this line before?"]
+
+  ASSESS["<b>Assess and compare</b><br/>evaluate.py — QC gates vs labels<br/>replay.py — counterfactual replay<br/>shadow.py — shadow models<br/>versioning.py — run stamp"]
+
+  DATA[("<b>Repo data</b><br/>data/transactions · results/<br/>runs/submissions.jsonl<br/>configs/default.toml")]
+
+  CLI --> PLAY
+  CLI --> LEARN
+  CLI --> ASSESS
+  PLAY -- "estimates per line" --> PRICE
+  LEARN -- "price book → prompt" --> PLAY
+  LEARN -- "opponent belief" --> PRICE
+  ASSESS -- "re-prices past games" --> PRICE
+  PLAY -- "submissions log" --> DATA
+  LEARN <-- "read / write" --> DATA
+  ASSESS -- "reads" --> DATA
+
+  classDef g1 fill:#dbe9fb,stroke:#2a78d6,color:#0b0b0b,text-align:left
+  classDef g2 fill:#fde3d8,stroke:#eb6834,color:#0b0b0b,text-align:left
+  classDef g3 fill:#d6f1e6,stroke:#1baf7a,color:#0b0b0b,text-align:left
+  classDef g4 fill:#e6e2fa,stroke:#6250d6,color:#0b0b0b,text-align:left
+  classDef store fill:#f0efec,stroke:#8a8984,color:#0b0b0b
+  class PLAY g1
+  class PRICE g2
+  class LEARN g3
+  class ASSESS g4
+  class DATA,CLI store
+    </script>
+  </section>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const fmt = (v, d = 0) => v == null || Number.isNaN(v) ? "–" :
+  v.toLocaleString("en-US", { maximumFractionDigits: d, minimumFractionDigits: d });
+const signed = v => (v > 0 ? "+" : v < 0 ? "−" : "") + fmt(Math.abs(v));
+const pct = v => v == null ? "–" : Math.round(v * 100) + "%";
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("c2fdash:" + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("c2fdash:" + k, JSON.stringify(v)); } catch {} },
+};
+
+let DATA = null, mode = "cum", view = "chart", picks = store.get("picks", []), writable = false;
+
+/* ---------- theme ---------- */
+(function initTheme() {
+  const t = store.get("theme", null);
+  if (t) document.documentElement.dataset.theme = t;
+  $("#theme-btn").onclick = () => {
+    const dark = document.documentElement.dataset.theme
+      ? document.documentElement.dataset.theme === "dark"
+      : matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.dataset.theme = dark ? "light" : "dark";
+    store.set("theme", document.documentElement.dataset.theme);
+    renderAll(); renderMermaid(true);
+  };
+})();
+
+/* ---------- tabs ---------- */
+function showTab(t) {
+  document.querySelectorAll("nav button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === t));
+  $("#view-dash").hidden = t !== "dash";
+  $("#view-prog").hidden = t !== "prog";
+  if (t === "prog") renderMermaid(false);
+  store.set("tab", t);
+}
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
+
+/* ---------- data loading: data.js works from file:// and from the server ---------- */
+function load() {
+  const s = document.createElement("script");
+  s.src = "data.js?ts=" + Date.now();
+  s.onload = () => { s.remove(); if (window.DASH_DATA) { DATA = window.DASH_DATA; $("#load-error").hidden = true; renderAll(); } };
+  s.onerror = () => {
+    s.remove();
+    $("#load-error").hidden = false;
+    $("#load-error").textContent = "No data yet: run  python scripts/dashboard.py serve  in the repo and open http://localhost:8777";
+    $("#updated").textContent = "no data";
+    $("#live-dot").classList.add("stale");
+  };
+  document.head.appendChild(s);
+}
+fetch("api/ping", { method: "GET" }).then(r => { writable = r.ok; if (DATA) renderTodo(); }).catch(() => {});
+
+function renderAll() {
+  if (!DATA) return;
+  const ts = new Date(DATA.generated_at);
+  const age = (Date.now() - ts) / 1000;
+  $("#updated").textContent = "updated " + ts.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) +
+    (DATA.git_sha ? " · " + DATA.git_sha : "");
+  $("#live-dot").classList.toggle("stale", age > 600);
+  $("#live-dot").title = age > 600 ? "data older than 10 min: is the server running?" : "live";
+  renderTiles(); renderBriefing(); renderLegend(); renderScores(); renderStrategies(); renderTodo();
+}
+
+/* ---------- scores ---------- */
+function series() {
+  const sc = DATA.scores, out = {};
+  for (const [t, cells] of Object.entries(sc.teams)) {
+    let c = 0;
+    out[t] = cells.map(v => mode === "cum" ? (c += v) : v);
+  }
+  return out;
+}
+function ranksAt(i, cum) {
+  const arr = Object.entries(cum).map(([t, v]) => [t, v[i]]).sort((a, b) => b[1] - a[1]);
+  return Object.fromEntries(arr.map(([t], k) => [t, k + 1]));
+}
+function cumulative() {
+  const out = {};
+  for (const [t, cells] of Object.entries(DATA.scores.teams)) { let c = 0; out[t] = cells.map(v => (c += v)); }
+  return out;
+}
+function renderTiles() {
+  const us = DATA.us, sc = DATA.scores, cum = cumulative(), n = sc.games.length - 1;
+  if (n < 0 || !cum[us]) { $("#tiles").innerHTML = ""; return; }
+  const rank = ranksAt(n, cum)[us], teams = Object.keys(cum).length;
+  const last = sc.teams[us][n];
+  const gameRank = Object.entries(sc.teams).map(([t, v]) => [t, v[n]]).sort((a, b) => b[1] - a[1]).findIndex(x => x[0] === us) + 1;
+  const k = Math.min(5, n + 1), lastK = sc.teams[us].slice(-k).reduce((a, b) => a + b, 0);
+  const leader = Object.entries(cum).sort((a, b) => b[1][n] - a[1][n])[0];
+  const prevRank = n > 0 ? ranksAt(n - 1, cum)[us] : rank;
+  const tiles = [
+    ["Our total", signed(cum[us][n]), `rank ${rank} of ${teams}` + (prevRank !== rank ? ` (was ${prevRank})` : "")],
+    [`Game ${sc.games[n]}`, signed(last), `rank ${gameRank} of ${teams} in this game`],
+    [`Last ${k} games`, signed(lastK), "sum of our net"],
+    ["Leader", esc(leader[0]), signed(leader[1][n]) + " total"],
+  ];
+  $("#tiles").innerHTML = tiles.map(([k, v, n]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="n">${n}</div></div>`).join("");
+}
+function colorOf(t) {
+  if (t === DATA.us) return css("--us");
+  const i = picks.indexOf(t);
+  return i >= 0 ? css(`--pick-${i + 1}`) : css("--other");
+}
+function renderLegend() {
+  const cum = cumulative(), n = DATA.scores.games.length - 1;
+  const teams = Object.keys(cum).sort((a, b) => cum[b][n] - cum[a][n]);
+  $("#legend").innerHTML = teams.map(t => {
+    const on = t === DATA.us || picks.includes(t);
+    const drop = isDropped(t);
+    return `<button data-team="${esc(t)}" aria-pressed="${on}" ${t === DATA.us ? "disabled" : ""}
+      title="${drop ? `stopped quoting in game ${DATA.dropped[t]}` : ""}">
+      <span class="swatch" style="background:${colorOf(t)};height:${on ? 3 : 2}px${drop ? ";opacity:.55" : ""}"></span>${esc(t)}${t === DATA.us ? " (us)" : ""}${drop ? ` <i class="muted-i">dropped out · game ${DATA.dropped[t]}</i>` : ""}</button>`;
+  }).join("");
+  const nd = Object.keys(DATA.dropped || {}).length;
+  $("#scale-dropped-wrap").hidden = !nd;
+  $("#scale-dropped").checked = scaleDropped;
+  $("#legend").querySelectorAll("button[data-team]").forEach(b => b.onclick = () => {
+    const t = b.dataset.team, i = picks.indexOf(t);
+    if (i >= 0) picks.splice(i, 1); else { if (picks.length >= 3) picks.shift(); picks.push(t); }
+    store.set("picks", picks); renderLegend(); renderScores();
+  });
+}
+function niceTicks(lo, hi, n = 5) {
+  // first tick at or below lo, last tick at or above hi, so every value sits inside the plot
+  const span = hi - lo || 1, step0 = span / n, mag = 10 ** Math.floor(Math.log10(step0));
+  const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => span / s <= n) || mag * 10;
+  const out = [], end = Math.ceil(hi / step - 1e-9) * step;
+  for (let v = Math.floor(lo / step + 1e-9) * step; v <= end + step * 1e-6; v += step) out.push(Math.abs(v) < step * 1e-9 ? 0 : v);
+  return out;
+}
+const isDropped = t => !!(DATA.dropped && DATA.dropped[t] != null);
+let scaleDropped = store.get("scaleDropped", false);
+const kfmt = v => Math.abs(v) >= 1000 ? (v / 1000).toLocaleString("en-US", { maximumFractionDigits: 1 }) + "k" : fmt(v);
+
+function renderScores() {
+  const sc = DATA.scores, games = sc.games, S = series();
+  $("#scores-sub").textContent = (mode === "cum" ? "Cumulative net payoff" : "Net payoff per game") +
+    " = received as handyman − paid as insurer. Source: " + sc.source + (sc.warning ? " (" + sc.warning + ")" : "") + ".";
+  $("#chart-wrap").hidden = view !== "chart";
+  $("#score-table").hidden = view !== "table";
+  if (view === "table") return renderScoreTable(S);
+
+  const svg = $("#chart"), W = svg.clientWidth || 900, H = svg.clientHeight || 380;
+  const m = { l: 52, r: 128, t: 12, b: 30 };
+  // the scale follows the teams still playing; dropped-out teams are clipped to the plot
+  const inScale = Object.keys(S).filter(t => scaleDropped || !isDropped(t) || t === DATA.us || picks.includes(t));
+  const all = inScale.flatMap(t => S[t]);
+  const ticks = niceTicks(Math.min(0, ...all), Math.max(0, ...all));
+  const y0 = ticks[0], y1 = ticks[ticks.length - 1];
+  const x = i => m.l + (games.length > 1 ? i / (games.length - 1) : .5) * (W - m.l - m.r);
+  const y = v => m.t + (1 - (v - y0) / (y1 - y0 || 1)) * (H - m.t - m.b);
+  const order = Object.keys(S).sort((a, b) => (a === DATA.us) - (b === DATA.us) || picks.includes(a) - picks.includes(b));
+  let h = `<defs><clipPath id="plotclip"><rect x="${m.l}" y="${m.t - 4}" width="${W - m.l - m.r + 6}" height="${H - m.t - m.b + 8}"/></clipPath></defs>`;
+  for (const v of ticks) h += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="${v === 0 ? css("--zero") : css("--grid")}" stroke-width="1"/>
+    <text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end">${kfmt(v)}</text>`;
+  const every = Math.max(1, Math.ceil(games.length / ((W - m.l - m.r) / 36)));
+  games.forEach((g, i) => { if (i % every === 0 || i === games.length - 1) h += `<text x="${x(i)}" y="${H - m.b + 18}" text-anchor="middle">${g}</text>`; });
+  h += `<text x="${m.l}" y="${H - 2}" class="lbl" style="font-size:11px">game</text>`;
+  const labels = [];
+  const offScale = [];
+  for (const t of order) {
+    const v = S[t], hi = t === DATA.us || picks.includes(t), drop = isDropped(t);
+    const d = v.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p).toFixed(1)}`).join("");
+    h += `<path d="${d}" fill="none" stroke="${colorOf(t)}" stroke-width="${hi ? 2.5 : 1.25}" stroke-linejoin="round" stroke-linecap="round"
+      opacity="${hi ? 1 : drop ? .55 : .9}" ${drop && !hi ? 'stroke-dasharray="4 4"' : ""} clip-path="url(#plotclip)"/>`;
+    const last = v[v.length - 1];
+    if (last < y0 || last > y1) offScale.push({ t, last });
+    else if (hi) labels.push({ t, y: y(last), c: colorOf(t) });
+  }
+  // teams whose line leaves the scale: a marker on the edge with their value
+  offScale.forEach((o, k) => {
+    const below = o.last < y0, yy = below ? H - m.b - 6 - k * 14 : m.t + 10 + k * 14;
+    h += `<text x="${W - m.r + 10}" y="${yy}" class="lbl">${below ? "↓" : "↑"} ${esc(o.t.length > 12 ? o.t.slice(0, 11) + "…" : o.t)} ${kfmt(o.last).replace("-", "−")}</text>`;
+  });
+  // end labels for highlighted series, nudged apart
+  labels.sort((a, b) => a.y - b.y);
+  for (let i = 1; i < labels.length; i++) if (labels[i].y - labels[i - 1].y < 14) labels[i].y = labels[i - 1].y + 14;
+  for (const L of labels) {
+    const last = S[L.t][S[L.t].length - 1];
+    h += `<circle cx="${x(games.length - 1)}" cy="${y(last)}" r="4" fill="${L.c}" stroke="${css("--surface")}" stroke-width="2"/>
+      <text x="${W - m.r + 10}" y="${L.y + 4}" class="lbl" style="font-weight:${L.t === DATA.us ? 650 : 500}">${esc(L.t.length > 16 ? L.t.slice(0, 15) + "…" : L.t)}</text>`;
+  }
+  h += `<line id="xh" y1="${m.t}" y2="${H - m.b}" stroke="${css("--muted")}" stroke-dasharray="3 3" visibility="hidden"/>
+    <g id="hoverdots"></g>
+    <rect x="${m.l}" y="0" width="${W - m.l - m.r}" height="${H}" fill="transparent" id="hit"/>`;
+  svg.innerHTML = h;
+
+  const tip = $("#tip"), xh = svg.querySelector("#xh"), dots = svg.querySelector("#hoverdots");
+  const hit = svg.querySelector("#hit");
+  const move = ev => {
+    const r = svg.getBoundingClientRect(), px = ev.clientX - r.left;
+    const i = Math.max(0, Math.min(games.length - 1, Math.round((px - m.l) / ((W - m.l - m.r) / Math.max(1, games.length - 1)))));
+    xh.setAttribute("x1", x(i)); xh.setAttribute("x2", x(i)); xh.setAttribute("visibility", "visible");
+    const rows = Object.entries(S).map(([t, v]) => [t, v[i]]).sort((a, b) => b[1] - a[1]);
+    dots.innerHTML = rows.filter(([t]) => t === DATA.us || picks.includes(t))
+      .map(([t, v]) => `<circle cx="${x(i)}" cy="${y(v)}" r="4" fill="${colorOf(t)}" stroke="${css("--surface")}" stroke-width="2"/>`).join("");
+    tip.innerHTML = `<h4>Game ${games[i]} · ${mode === "cum" ? "cumulative" : "this game"}</h4>` + rows.map(([t, v], k) =>
+      `<div class="r ${t === DATA.us ? "us" : ""}"><span class="nm"><span class="swatch" style="background:${colorOf(t)}"></span>${k + 1}. ${esc(t)}${isDropped(t) ? " (dropped out)" : ""}</span><span>${signed(v)}</span></div>`).join("");
+    tip.style.display = "block";
+    const tw = tip.offsetWidth, left = x(i) + 14 + tw > W ? x(i) - tw - 14 : x(i) + 14;
+    tip.style.left = left + "px"; tip.style.top = Math.max(0, ev.clientY - r.top - 60) + "px";
+  };
+  hit.addEventListener("pointermove", move);
+  hit.addEventListener("pointerleave", () => { tip.style.display = "none"; xh.setAttribute("visibility", "hidden"); dots.innerHTML = ""; });
+}
+function renderScoreTable(S) {
+  const g = DATA.scores.games, n = g.length - 1;
+  const teams = Object.keys(S).sort((a, b) => S[b][n] - S[a][n]);
+  $("#score-table").innerHTML = `<table><thead><tr><th>Team</th>${g.map(x => `<th class="num">${x}</th>`).join("")}</tr></thead><tbody>` +
+    teams.map(t => `<tr class="${t === DATA.us ? "us" : ""}"><td>${esc(t)}</td>${S[t].map(v => `<td class="num">${kfmt(v)}</td>`).join("")}</tr>`).join("") + "</tbody></table>";
+}
+$("#scale-dropped").onchange = e => { scaleDropped = e.target.checked; store.set("scaleDropped", scaleDropped); renderScores(); };
+document.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => {
+  mode = b.dataset.mode; document.querySelectorAll("[data-mode]").forEach(x => x.setAttribute("aria-pressed", x === b)); renderScores();
+});
+document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => {
+  view = b.dataset.view; document.querySelectorAll("[data-view]").forEach(x => x.setAttribute("aria-pressed", x === b)); renderScores();
+});
+let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => DATA && renderScores(), 120); });
+
+/* ---------- briefing ---------- */
+let briefGame = null;
+function renderBriefing() {
+  const B = DATA.briefings || [];
+  $("#brief-card").hidden = !B.length;
+  if (!B.length) return;
+  if (briefGame == null || !B.some(b => b.game === briefGame)) briefGame = B[0].game;
+  const sel = $("#brief-sel");
+  sel.innerHTML = B.map(b => `<option value="${b.game}" ${b.game === briefGame ? "selected" : ""}>${b.game}${b === B[0] ? " (latest)" : ""}</option>`).join("");
+  sel.onchange = () => { briefGame = +sel.value; renderBriefing(); };
+  const b = B.find(x => x.game === briefGame);
+  $("#brief-headline").textContent = b.headline.replace(/-/g, "−");
+  $("#brief-body").innerHTML = b.sections.map(s => `<div><h4>${esc(s.title)}</h4><ul>${s.bullets.map(x =>
+    `<li class="${/^WARNING|^Error/.test(x) ? "warn-li" : ""}">${esc(x)}</li>`).join("")}</ul></div>`).join("");
+}
+
+/* ---------- strategies ---------- */
+function costBar(a) {
+  const parts = [["fair", a.cost_share_fair, "Fair bills accepted"], ["inflated", a.cost_share_inflated, "Inflated bills paid"],
+                 ["penalty", a.cost_share_penalty, "Fair bills rejected (penalties)"], ["unclassified", a.cost_share_unclassified, "Unclassified"]];
+  if (!parts.some(p => p[1])) return "";
+  return `<div class="costbar" role="img" aria-label="${parts.filter(p => p[1]).map(p => p[2] + " " + pct(p[1])).join(", ")}">` +
+    parts.filter(p => p[1] > 0.0005).map(p => `<span class="seg-${p[0]}" style="flex:${p[1]}" title="${p[2]}: ${pct(p[1])}"></span>`).join("") + "</div>";
+}
+function renderStrategies() {
+  const S = DATA.strategies, cum = cumulative(), n = DATA.scores.games.length - 1;
+  $("#strat-sub").textContent = `Last ${S.window_games || 10} games only (games ${S.first_game ?? 1}–${S.last_game}), read off the public transactions; "last ${S.recent_games}" flags teams whose behaviour changed recently. Sorted by total score.`;
+  const teams = Object.keys(S.teams).sort((a, b) => ((cum[b] || [])[n] ?? 0) - ((cum[a] || [])[n] ?? 0));
+  const shift = (now, rec) => rec && rec !== now ? `<div class="shift">last ${S.recent_games}: <b>${esc(rec)}</b></div>` : "";
+  $("#strat").innerHTML = `<thead>
+    <tr><th class="grp"></th><th class="grp" colspan="4">As handyman (charge a)</th><th class="grp" colspan="5">As insurer (limit b): where the money went</th></tr>
+    <tr><th>Team</th><th>Strategy</th><th class="num">a / t</th><th class="num">Above t</th><th class="num">Paid</th>
+        <th>Strategy</th><th class="num">Paid as insurer</th><th class="num">Fair accepted</th><th class="num">Inflated paid</th><th class="num">Fair rejected</th><th aria-label="Share of cost"></th></tr></thead><tbody>` +
+    teams.map(t => {
+      const s = S.teams[t], a = s.all;
+      return `<tr class="${s.is_us ? "us" : ""}">
+        <td><b>${esc(t)}</b>${s.is_us ? " (us)" : ""}<div class="why">${signed((cum[t] || [])[n] ?? 0)} total</div></td>
+        <td><span class="badge">${esc(s.craftsman.label)}</span><div class="why">${esc(s.craftsman.reason)}</div>${shift(s.craftsman.label, s.craftsman.recent_label)}</td>
+        <td class="num">${a.markup == null ? "–" : a.markup.toFixed(2)}</td>
+        <td class="num">${pct(a.over_covered)}</td>
+        <td class="num" title="share of their bills that were accepted">${pct(a.charge_accept_rate)}</td>
+        <td><span class="badge">${esc(s.insurer.label)}</span><div class="why">${esc(s.insurer.reason)}</div>${shift(s.insurer.label, s.insurer.recent_label)}</td>
+        <td class="num">${kfmt(a.costs)}</td>
+        <td class="num">${pct(a.cost_share_fair)}</td>
+        <td class="num">${pct(a.cost_share_inflated)}</td>
+        <td class="num">${pct(a.cost_share_penalty)}</td>
+        <td>${costBar(a)}</td></tr>`;
+    }).join("") + "</tbody>";
+}
+
+/* ---------- todo ---------- */
+function inline(s) {
+  return esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/(^|\s)#([\w-]+)/g, '$1<span class="tag">#$2</span>');
+}
+const ago = iso => {
+  const s = (Date.now() - new Date(iso)) / 1000;
+  return s < 3600 ? Math.max(1, Math.round(s / 60)) + "m" : s < 86400 ? Math.round(s / 3600) + "h" : Math.round(s / 86400) + "d";
+};
+function renderTodo() {
+  if (!DATA) return;
+  const T = DATA.todo, owners = [...T.members];
+  for (const it of T.items) if (!owners.includes(it.owner)) owners.push(it.owner);
+  const showDone = store.get("showDone", false);
+  $("#todo").innerHTML = owners.map(o => {
+    const items = T.items.filter(i => i.owner === o);
+    const open = items.filter(i => !i.done), done = items.filter(i => i.done);
+    const card = i => `<label class="task ${i.done ? "done" : ""}">
+        <input type="checkbox" ${i.done ? "checked" : ""} ${i.source === "TODO.md" && writable ? "" : "disabled"}
+          data-owner="${esc(i.owner)}" data-text="${esc(i.text)}" title="${i.source === "TODO.md" ? (writable ? "tick in TODO.md" : "edit TODO.md to tick") : "closes itself when the step is done"}">
+        <span class="t">${i.source === "pipeline" ? '<span class="src">auto</span>' : ""}${inline(i.text)}</span></label>`;
+    const work = (T.recent_work[o] || []);
+    return `<div class="col"><h3>${esc(o)}<span class="cnt">${open.length} open</span></h3>
+      ${open.map(card).join("") || '<div class="empty">Nothing open.</div>'}
+      ${showDone ? done.map(card).join("") : ""}
+      ${writable ? `<form class="addform" data-owner="${esc(o)}"><input placeholder="Add a task…" aria-label="Add a task for ${esc(o)}"><button class="icon-btn">Add</button></form>` : ""}
+      ${T.members.includes(o) ? `<div class="work"><h4>Latest commits</h4>${work.length ? "<ul>" + work.slice(0, 4).map(w =>
+        `<li><time>${ago(w.when)}</time>${esc(w.subject.replace(/^Auto-sync( \([^)]*\))?: /, "sync: "))}</li>`).join("") + "</ul>" : '<div class="empty">No commits yet.</div>'}</div>` : ""}
+    </div>`;
+  }).join("");
+  const nDone = T.items.filter(i => i.done).length;
+  $("#todo-note").innerHTML = `${T.items.filter(i => !i.done).length} open · ${nDone} done
+    <button class="icon-btn" id="toggle-done">${showDone ? "Hide" : "Show"} done</button>
+    ${writable ? "· Changes are written to TODO.md; autosync shares them." : "· Read-only view: edit TODO.md, or open via <code>python scripts/dashboard.py serve</code> to tick here."}`;
+  $("#toggle-done").onclick = () => { store.set("showDone", !showDone); renderTodo(); };
+  if (!writable) return;
+  $("#todo").querySelectorAll("input[type=checkbox]:not([disabled])").forEach(cb => cb.onchange = () =>
+    post({ action: "toggle", owner: cb.dataset.owner, text: cb.dataset.text, done: cb.checked }));
+  $("#todo").querySelectorAll("form.addform").forEach(f => f.onsubmit = e => {
+    e.preventDefault(); const v = f.querySelector("input").value.trim();
+    if (v) post({ action: "add", owner: f.dataset.owner, text: v });
+  });
+}
+function post(body) {
+  fetch("api/todo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+    .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
+    .then(d => { DATA.todo = d.todo; renderTodo(); })
+    .catch(e => alert("Could not update TODO.md: " + e));
+}
+
+/* ---------- mermaid (program tab) ---------- */
+let mermaidLoaded = null, mermaidDone = false;
+const sources = [...document.querySelectorAll("script.mmd")].map(p => p.textContent.trim());
+function darkNow() {
+  const t = document.documentElement.dataset.theme;
+  return t ? t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+}
+function themed(src) {
+  if (!darkNow()) return src;
+  return src.replace(/fill:#dbe9fb,stroke:#2a78d6,color:#0b0b0b/g, "fill:#1c3350,stroke:#3987e5,color:#f0efec")
+    .replace(/fill:#d6f1e6,stroke:#1baf7a,color:#0b0b0b/g, "fill:#163a2e,stroke:#199e70,color:#f0efec")
+    .replace(/fill:#e6e2fa,stroke:#6250d6,color:#0b0b0b/g, "fill:#2b2650,stroke:#9085e9,color:#f0efec")
+    .replace(/fill:#fde3d8,stroke:#eb6834,color:#0b0b0b/g, "fill:#45261a,stroke:#d95926,color:#f0efec")
+    .replace(/fill:#f0efec,stroke:#8a8984,color:#0b0b0b/g, "fill:#2a2a28,stroke:#8c8b84,color:#f0efec");
+}
+function renderMermaid(force) {
+  if (mermaidDone && !force) return;
+  if (!mermaidLoaded) mermaidLoaded = new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js";
+    s.onload = res; s.onerror = rej; document.head.appendChild(s);
+  });
+  mermaidLoaded.then(async () => {
+    const dark = darkNow();
+    mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "base",
+      themeVariables: {
+        fontFamily: css("--font"), fontSize: "14px",
+        primaryColor: dark ? "#232322" : "#f6f6f4", primaryBorderColor: dark ? "#5c5b57" : "#a9a8a2",
+        primaryTextColor: dark ? "#f0efec" : "#0b0b0b", lineColor: dark ? "#8c8b84" : "#52514e",
+        clusterBkg: dark ? "#1f1f1e" : "#fafaf8", clusterBorder: dark ? "#3a3a38" : "#d8d7d1",
+        actorBkg: dark ? "#1c3350" : "#dbe9fb", actorBorder: dark ? "#3987e5" : "#2a78d6",
+        actorTextColor: dark ? "#f0efec" : "#0b0b0b", signalColor: dark ? "#c3c2b7" : "#52514e",
+        signalTextColor: dark ? "#f0efec" : "#0b0b0b", noteBkgColor: dark ? "#3a3220" : "#fdf3d8",
+        noteBorderColor: dark ? "#c98500" : "#eda100", noteTextColor: dark ? "#f0efec" : "#0b0b0b",
+        labelBoxBkgColor: dark ? "#232322" : "#f0efec", activationBkgColor: dark ? "#232322" : "#f0efec",
+        edgeLabelBackground: dark ? "#1a1a19" : "#fcfcfb", textColor: dark ? "#f0efec" : "#0b0b0b",
+      },
+      flowchart: { curve: "basis", padding: 14, nodeSpacing: 36, rankSpacing: 48, htmlLabels: true, wrappingWidth: 380 },
+      sequence: { mirrorActors: false, actorMargin: 60, messageMargin: 32 },
+    });
+    const pres = document.querySelectorAll("#view-prog .diagram");
+    for (let i = 0; i < pres.length; i++) {
+      try {
+        const { svg } = await mermaid.render("mmd" + i + "_" + Date.now(), themed(sources[i]));
+        pres[i].innerHTML = svg;
+      } catch (e) {
+        pres[i].innerHTML = `<pre class="warn">${esc(e.message || e)}</pre><pre>${esc(sources[i])}</pre>`;
+      }
+    }
+    mermaidDone = true;
+  }).catch(() => {
+    document.querySelectorAll("#view-prog .diagram").forEach((d, i) => {
+      d.innerHTML = `<p class="warn">Mermaid could not be loaded (offline?). Source:</p><pre style="text-align:left">${esc(sources[i])}</pre>`;
+    });
+  });
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { renderAll(); if (mermaidDone) renderMermaid(true); });
+
+/* ---------- start ---------- */
+showTab(store.get("tab", "dash") === "prog" ? "prog" : "dash");
+load();
+setInterval(load, 30000);
+</script>
+</body>
+</html>
